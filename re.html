@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ras Bingo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --hint-color: #707579;
+            --link-color: #3390ec;
+            --button-color: #3390ec;
+            --button-text-color: #ffffff;
+            --secondary-bg-color: #f4f4f5;
+            
+            /* BINGO column colors */
+            --b-color: #4CAF50; /* Green */
+            --i-color: #FFEB3B; /* Yellow */
+            --n-color: #F44336; /* Red */
+            --g-color: #2196F3; /* Blue */
+            --o-color: #795548; /* Brown */
+        }
+
+        .dark-mode {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --hint-color: #aaaaaa;
+            --secondary-bg-color: #1e1e1e;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            transition: all 0.2s ease;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 16px;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding-bottom: 50px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #3390ec;
+            font-weight: bold;
+        }
+        
+        .subtitle {
+            color: var(--hint-color);
+            font-size: 14px;
+        }
+        
+        .view {
+            display: none;
+        }
+        
+        .view.active {
+            display: block;
+        }
+        
+        /* Card Selection View */
+        .card-selection {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .card-option {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--secondary-bg-color);
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            font-size: 16px;
+            border: 2px solid transparent;
+        }
+        
+        .card-option:hover {
+            border-color: var(--button-color);
+        }
+        
+        .card-option.selected {
+            background-color: var(--button-color);
+            color: var(--button-text-color);
+        }
+        
+        /* Game View */
+        .game-area {
+            margin-bottom: 24px;
+        }
+        
+        .current-number-container {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .called-numbers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 8px;
+            min-height: 24px;
+        }
+        
+        .called-number {
+            background-color: var(--secondary-bg-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .current-number-value {
+            font-size: 48px;
+            font-weight: bold;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Color classes for current number based on column */
+        .current-number-b { color: var(--b-color); }
+        .current-number-i { color: var(--i-color); }
+        .current-number-n { color: var(--n-color); }
+        .current-number-g { color: var(--g-color); }
+        .current-number-o { color: var(--o-color); }
+        
+        .countdown {
+            font-size: 24px;
+            color: var(--hint-color);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .bingo-card-container {
+            margin: 0 auto 20px;
+            max-width: 320px;
+        }
+        
+        .bingo-headers {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        
+        .bingo-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 4px;
+            border-radius: 6px;
+        }
+        
+        /* Color classes for headers */
+        .bingo-header-b { background-color: var(--b-color); color: white; }
+        .bingo-header-i { background-color: var(--i-color); color: #333; }
+        .bingo-header-n { background-color: var(--n-color); color: white; }
+        .bingo-header-g { background-color: var(--g-color); color: white; }
+        .bingo-header-o { background-color: var(--o-color); color: white; }
+        
+        .bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+        
+        .bingo-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            border: 2px solid var(--secondary-bg-color);
+            background-color: var(--bg-color);
+        }
+        
+        /* Color classes for cells based on column */
+        .bingo-cell-b { border-color: var(--b-color); }
+        .bingo-cell-i { border-color: var(--i-color); }
+        .bingo-cell-n { border-color: var(--n-color); }
+        .bingo-cell-g { border-color: var(--g-color); }
+        .bingo-cell-o { border-color: var(--o-color); }
+        
+        .bingo-cell.selected {
+            color: white;
+        }
+        
+        /* Selected state colors */
+        .bingo-cell-b.selected { background-color: var(--b-color); }
+        .bingo-cell-i.selected { background-color: var(--i-color); color: #333; }
+        .bingo-cell-n.selected { background-color: var(--n-color); }
+        .bingo-cell-g.selected { background-color: var(--g-color); }
+        .bingo-cell-o.selected { background-color: var(--o-color); }
+        
+        .bingo-cell.free {
+            background-color: #FFD700;
+            color: #8B4513;
+            border-color: #FFD700;
+        }
+        
+        .bingo-cell.blocked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background-color: var(--bg-color);
+        }
+        
+        .controls button {
+            padding: 12px 16px;
+            background-color: var(--button-color);
+            color: var(--button-text-color);
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            flex: 1;
+            max-width: 150px;
+        }
+        
+        .controls .spacer {
+            flex: 1;
+            max-width: 60px;
+        }
+        
+        #bingoBtn {
+            background-color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        #exitBtn {
+            background-color: #F44336;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .bingo-message {
+            text-align: center;
+            font-weight: bold;
+            margin: 12px 0;
+            min-height: 24px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .win-message {
+            background-color: #4CAF50;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        
+        .invalid-message {
+            background-color: #F44336;
+            color: white;
+        }
+        
+        .corner-win {
+            background-color: #9C27B0;
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            color: var(--hint-color);
+            font-size: 14px;
+        }
+        
+        .back-button {
+            margin-bottom: 16px;
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            bottom: 60px;
+            right: 10px;
+            padding: 8px 12px;
+            background-color: var(--button-color);
+            color: var(--button-text-color);
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        @media (min-width: 400px) {
+            .card-selection {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ras Bingo</h1>
+            <p class="subtitle">Match 5 numbers in a row and click BINGO to win!</p>
+        </header>
+        
+        <!-- Card Selection View -->
+        <div id="cardSelectionView" class="view active">
+            <h2>Choose Your Bingo Card</h2>
+            <p>Select one of 100 unique cards to play with:</p>
+            
+            <div class="card-selection" id="cardSelection">
+                <!-- Card options will be generated by JavaScript -->
+            </div>
+            
+            <div class="controls">
+                <button id="startGameBtn">Start Game</button>
+            </div>
+        </div>
+        
+        <!-- Game View -->
+        <div id="gameView" class="view">
+            <div class="game-area">
+                <div class="countdown" id="countdown">Game starts in: 30</div>
+                
+                <div class="current-number-container">
+                    <div class="called-numbers" id="calledNumbersDisplay"></div>
+                    <div class="current-number-value" id="currentNumber">--</div>
+                </div>
+                
+                <div class="bingo-message" id="bingoMessage"></div>
+                
+                <div class="bingo-card-container">
+                    <div class="bingo-headers">
+                        <div class="bingo-header bingo-header-b">B</div>
+                        <div class="bingo-header bingo-header-i">I</div>
+                        <div class="bingo-header bingo-header-n">N</div>
+                        <div class="bingo-header bingo-header-g">G</div>
+                        <div class="bingo-header bingo-header-o">O</div>
+                    </div>
+                    <div class="bingo-card" id="bingoCard">
+                        <!-- Bingo cells will be generated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="stats">
+                    <span id="calledNumbers">Called: 0/75</span>
+                    <span id="remainingNumbers">Remaining: 75</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls" id="gameControls" style="display: none;">
+        <button id="exitBtn">Exit</button>
+        <div class="spacer"></div>
+        <button id="bingoBtn">BINGO</button>
+    </div>
+
+    <button class="theme-toggle" id="themeToggle">🌙 Dark Mode</button>
+    
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.MainButton.hide();
+        }
+        
+        // Game elements
+        const cardSelectionView = document.getElementById('cardSelectionView');
+        const gameView = document.getElementById('gameView');
+        const cardSelection = document.getElementById('cardSelection');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const bingoCard = document.getElementById('bingoCard');
+        const currentNumberDisplay = document.getElementById('currentNumber');
+        const bingoMessage = document.getElementById('bingoMessage');
+        const calledNumbersDisplay = document.getElementById('calledNumbersDisplay');
+        const calledNumbersCount = document.getElementById('calledNumbers');
+        const remainingNumbersDisplay = document.getElementById('remainingNumbers');
+        const countdownDisplay = document.getElementById('countdown');
+        const themeToggle = document.getElementById('themeToggle');
+        const gameControls = document.getElementById('gameControls');
+        const bingoBtn = document.getElementById('bingoBtn');
+        const exitBtn = document.getElementById('exitBtn');
+        
+        // Game state
+        let calledNumbers = [];
+        let currentNumber = null;
+        let availableNumbers = [];
+        let allBingoCards = [];
+        let selectedCardIndex = -1;
+        let countdownInterval;
+        let callInterval;
+        let countdownSeconds = 30;
+        const BINGO_SIZE = 5;
+        const TOTAL_CARDS = 100;
+        const CALL_INTERVAL = 3000; // 3 seconds
+        const MAX_DISPLAYED_CALLED_NUMBERS = 10;
+        let gameActive = false;
+        let hasBingo = false;
+        
+        // Bingo number ranges with letters and colors
+        const BINGO_RANGES = {
+            'B': {min: 1, max: 15, color: 'b'},
+            'I': {min: 16, max: 30, color: 'i'},
+            'N': {min: 31, max: 45, color: 'n'},
+            'G': {min: 46, max: 60, color: 'g'},
+            'O': {min: 61, max: 75, color: 'o'}
+        };
+        
+        // Initialize the game
+        initGame();
+        
+        function initGame() {
+            // Generate all 100 unique Bingo cards
+            generateAllBingoCards();
+            
+            // Create card selection UI
+            createCardSelectionUI();
+            
+            // Set up theme toggle
+            setupThemeToggle();
+            
+            // Set up game controls
+            setupGameControls();
+        }
+        
+        function setupThemeToggle() {
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️ Light Mode';
+            }
+            
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isDark);
+                themeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+            });
+        }
+        
+        function setupGameControls() {
+            bingoBtn.addEventListener('click', () => {
+                if (!gameActive) return;
+                
+                const hasWinningPattern = checkBingo(true);
+                if (hasWinningPattern) {
+                    // Valid BINGO
+                    gameActive = false;
+                    clearInterval(callInterval);
+                    bingoBtn.disabled = true;
+                    
+                    // Highlight the winning pattern
+                    bingoMessage.classList.add('win-message');
+                    
+                    if (tg?.HapticFeedback?.notificationOccurred) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+                } else {
+                    // Invalid BINGO - block the card
+                    blockCard();
+                    bingoMessage.textContent = "Invalid BINGO! Card blocked.";
+                    bingoMessage.classList.add('invalid-message');
+                    
+                    if (tg?.HapticFeedback?.notificationOccurred) {
+                        tg.HapticFeedback.notificationOccurred('error');
+                    }
+                }
+            });
+            
+            exitBtn.addEventListener('click', () => {
+                returnToCardSelection();
+            });
+        }
+        
+        function blockCard() {
+            const cells = document.querySelectorAll('.bingo-cell');
+            cells.forEach(cell => {
+                cell.classList.add('blocked');
+            });
+            gameActive = false;
+            clearInterval(callInterval);
+            bingoBtn.disabled = true;
+            exitBtn.textContent = "Back";
+        }
+        
+        function generateAllBingoCards() {
+            allBingoCards = [];
+            
+            for (let cardNum = 0; cardNum < TOTAL_CARDS; cardNum++) {
+                let card = [];
+                let usedNumbers = new Set();
+                
+                // Create cells for each column
+                for (let row = 0; row < BINGO_SIZE; row++) {
+                    for (let col = 0; col < BINGO_SIZE; col++) {
+                        // Middle cell is free space
+                        if (row === 2 && col === 2) {
+                            card.push({value: 'FREE', color: ''});
+                            continue;
+                        }
+                        
+                        // Get random number from the appropriate range
+                        const range = Object.values(BINGO_RANGES)[col];
+                        let num;
+                        let attempts = 0;
+                        const maxAttempts = 100;
+                        
+                        // Try to find a unique number for this position across all cards
+                        do {
+                            num = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+                            attempts++;
+                            
+                            // After many attempts, just pick any number from the range
+                            if (attempts > maxAttempts) {
+                                const allNumbers = Array.from({length: range.max - range.min + 1}, (_, i) => i + range.min);
+                                num = allNumbers[Math.floor(Math.random() * allNumbers.length)];
+                                break;
+                            }
+                        } while (usedNumbers.has(`${col}-${num}`));
+                        
+                        usedNumbers.add(`${col}-${num}`);
+                        card.push({value: num, color: range.color});
+                    }
+                }
+                
+                allBingoCards.push(card);
+            }
+        }
+        
+        function createCardSelectionUI() {
+            cardSelection.innerHTML = '';
+            
+            for (let i = 0; i < TOTAL_CARDS; i++) {
+                const cardOption = document.createElement('div');
+                cardOption.className = 'card-option';
+                cardOption.textContent = i + 1;
+                cardOption.dataset.index = i;
+                
+                cardOption.addEventListener('click', function() {
+                    // Deselect all other options
+                    document.querySelectorAll('.card-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Select this one
+                    this.classList.add('selected');
+                    selectedCardIndex = parseInt(this.dataset.index);
+                });
+                
+                cardSelection.appendChild(cardOption);
+            }
+        }
+        
+        function startGame() {
+            if (selectedCardIndex === -1) {
+                alert("Please select a card first!");
+                return;
+            }
+            
+            // Switch to game view
+            cardSelectionView.classList.remove('active');
+            gameView.classList.add('active');
+            gameControls.style.display = 'flex';
+            
+            // Clear previous game state
+            bingoCard.innerHTML = '';
+            calledNumbers = [];
+            currentNumber = null;
+            currentNumberDisplay.textContent = '--';
+            currentNumberDisplay.className = 'current-number-value';
+            bingoMessage.textContent = '';
+            bingoMessage.className = 'bingo-message';
+            calledNumbersDisplay.innerHTML = '';
+            countdownSeconds = 30;
+            gameActive = true;
+            hasBingo = false;
+            bingoBtn.disabled = false;
+            exitBtn.textContent = "Exit";
+            
+            // Generate BINGO numbers (1-75)
+            availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+            
+            // Update stats
+            updateStats();
+            
+            // Create the Bingo card from the selected card data
+            createBingoCard();
+            
+            // Start the countdown
+            startCountdown();
+        }
+        
+        function startCountdown() {
+            clearInterval(countdownInterval);
+            countdownDisplay.textContent = `Game starts in: ${countdownSeconds}`;
+            
+            countdownInterval = setInterval(() => {
+                countdownSeconds--;
+                countdownDisplay.textContent = `Game starts in: ${countdownSeconds}`;
+                
+                if (countdownSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownDisplay.textContent = "Game in progress!";
+                    startNumberCalling();
+                }
+            }, 1000);
+        }
+        
+        function startNumberCalling() {
+            // Call first number immediately
+            callNumber();
+            
+            // Then set up the interval for automatic calling
+            callInterval = setInterval(() => {
+                if (gameActive) {
+                    callNumber();
+                }
+            }, CALL_INTERVAL);
+        }
+        
+        function createBingoCard() {
+            const cardData = allBingoCards[selectedCardIndex];
+            
+            for (let row = 0; row < BINGO_SIZE; row++) {
+                for (let col = 0; col < BINGO_SIZE; col++) {
+                    const cellData = cardData[row * BINGO_SIZE + col];
+                    const cell = document.createElement('div');
+                    cell.className = `bingo-cell bingo-cell-${cellData.color}`;
+                    
+                    // Middle cell is free space
+                    if (row === 2 && col === 2) {
+                        cell.textContent = 'FREE';
+                        cell.classList.add('free');
+                        bingoCard.appendChild(cell);
+                        continue;
+                    }
+                    
+                    cell.textContent = cellData.value;
+                    
+                    cell.addEventListener('click', function() {
+                        if (!gameActive || this.classList.contains('blocked')) return;
+                        
+                        if (calledNumbers.includes(parseInt(this.textContent))) {
+                            this.classList.toggle('selected');
+                            if (tg?.HapticFeedback?.impactOccurred) {
+                                tg.HapticFeedback.impactOccurred('light');
+                            }
+                        }
+                    });
+                    
+                    bingoCard.appendChild(cell);
+                }
+            }
+        }
+        
+        function callNumber() {
+            if (availableNumbers.length === 0 || !gameActive) {
+                currentNumberDisplay.textContent = 'Done!';
+                clearInterval(callInterval);
+                gameActive = false;
+                if (tg?.HapticFeedback?.notificationOccurred) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+                return;
+            }
+
+            // Get random number from remaining numbers
+            const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+            currentNumber = availableNumbers[randomIndex];
+            
+            // Remove called number from the pool
+            availableNumbers.splice(randomIndex, 1);
+            calledNumbers.push(currentNumber);
+            
+            // Determine which column the number belongs to
+            let columnInfo = null;
+            for (const [letter, range] of Object.entries(BINGO_RANGES)) {
+                if (currentNumber >= range.min && currentNumber <= range.max) {
+                    columnInfo = {letter, color: range.color};
+                    break;
+                }
+            }
+            
+            // Display with column letter and color (e.g. "B1")
+            currentNumberDisplay.textContent = `${columnInfo.letter}${currentNumber}`;
+            currentNumberDisplay.className = `current-number-value current-number-${columnInfo.color}`;
+            
+            // Add to called numbers display
+            updateCalledNumbersDisplay();
+            updateStats();
+            
+            // Play sound and vibration
+            if (tg?.HapticFeedback?.impactOccurred) {
+                tg.HapticFeedback.impactOccurred('rigid');
+            }
+            
+            // Highlight matching cells on the card
+            const cells = document.querySelectorAll('.bingo-cell:not(.free)');
+            cells.forEach(cell => {
+                if (parseInt(cell.textContent) === currentNumber) {
+                    cell.classList.add('selected');
+                }
+            });
+        }
+        
+        function updateCalledNumbersDisplay() {
+            calledNumbersDisplay.innerHTML = '';
+            
+            // Show only the most recent numbers (up to MAX_DISPLAYED_CALLED_NUMBERS)
+            const startIndex = Math.max(0, calledNumbers.length - MAX_DISPLAYED_CALLED_NUMBERS);
+            const recentNumbers = calledNumbers.slice(startIndex);
+            
+            recentNumbers.forEach(num => {
+                // Determine column info for each number
+                let columnInfo = null;
+                for (const [letter, range] of Object.entries(BINGO_RANGES)) {
+                    if (num >= range.min && num <= range.max) {
+                        columnInfo = {letter, color: range.color};
+                        break;
+                    }
+                }
+                
+                const numElement = document.createElement('span');
+                numElement.className = `called-number`;
+                numElement.textContent = `${columnInfo.letter}${num}`;
+                numElement.style.borderLeft = `3px solid var(--${columnInfo.color}-color)`;
+                calledNumbersDisplay.appendChild(numElement);
+            });
+            
+            if (calledNumbers.length > MAX_DISPLAYED_CALLED_NUMBERS) {
+                const moreElement = document.createElement('span');
+                moreElement.className = 'called-number';
+                moreElement.textContent = `+${calledNumbers.length - MAX_DISPLAYED_CALLED_NUMBERS} more`;
+                calledNumbersDisplay.insertBefore(moreElement, calledNumbersDisplay.firstChild);
+            }
+        }
+        
+        function updateStats() {
+            calledNumbersCount.textContent = `Called: ${calledNumbers.length}/75`;
+            remainingNumbersDisplay.textContent = `Remaining: ${availableNumbers.length}`;
+        }
+        
+        function checkBingo(showMessage = false) {
+            const cells = Array.from(document.querySelectorAll('.bingo-cell'));
+            const size = BINGO_SIZE;
+            let winningPattern = null;
+            let winningCells = [];
+            
+            // Convert to 2D array
+            const grid = [];
+            while (cells.length) {
+                grid.push(cells.splice(0, size));
+            }
+            
+            // Check rows
+            for (let row = 0; row < size; row++) {
+                if (grid[row].every(cell => cell.classList.contains('selected') || cell.classList.contains('free'))) {
+                    winningPattern = `Row ${row + 1}`;
+                    winningCells = grid[row].filter(cell => !cell.classList.contains('free'));
+                    break;
+                }
+            }
+            
+            // Check columns if no row win
+            if (!winningPattern) {
+                for (let col = 0; col < size; col++) {
+                    let columnWin = true;
+                    let columnCells = [];
+                    for (let row = 0; row < size; row++) {
+                        if (!grid[row][col].classList.contains('selected') && !grid[row][col].classList.contains('free')) {
+                            columnWin = false;
+                            break;
+                        }
+                        columnCells.push(grid[row][col]);
+                    }
+                    if (columnWin) {
+                        winningPattern = `Column ${String.fromCharCode(65 + col)}`;
+                        winningCells = columnCells.filter(cell => !cell.classList.contains('free'));
+                        break;
+                    }
+                }
+            }
+            
+            // Check diagonals if no row or column win
+            if (!winningPattern) {
+                let diagonal1Win = true;
+                let diagonal1Cells = [];
+                let diagonal2Win = true;
+                let diagonal2Cells = [];
+                
+                for (let i = 0; i < size; i++) {
+                    if (!grid[i][i].classList.contains('selected') && !grid[i][i].classList.contains('free')) {
+                        diagonal1Win = false;
+                    } else {
+                        diagonal1Cells.push(grid[i][i]);
+                    }
+                    
+                    if (!grid[i][size - 1 - i].classList.contains('selected') && !grid[i][size - 1 - i].classList.contains('free')) {
+                        diagonal2Win = false;
+                    } else {
+                        diagonal2Cells.push(grid[i][size - 1 - i]);
+                    }
+                }
+                
+                if (diagonal1Win) {
+                    winningPattern = "Top-Left to Bottom-Right Diagonal";
+                    winningCells = diagonal1Cells.filter(cell => !cell.classList.contains('free'));
+                } else if (diagonal2Win) {
+                    winningPattern = "Top-Right to Bottom-Left Diagonal";
+                    winningCells = diagonal2Cells.filter(cell => !cell.classList.contains('free'));
+                }
+            }
+            
+            // Check corners if no other win (all four corners selected)
+            if (!winningPattern) {
+                const corners = [
+                    grid[0][0], // Top-left
+                    grid[0][size-1], // Top-right
+                    grid[size-1][0], // Bottom-left
+                    grid[size-1][size-1]  // Bottom-right
+                ];
+                
+                if (corners.every(cell => cell.classList.contains('selected'))) {
+                    winningPattern = "Four Corners";
+                    winningCells = corners;
+                }
+            }
+            
+            if (winningPattern && showMessage) {
+                // Find which number triggered the win (the most recently called number in the winning cells)
+                let winningNumber = null;
+                const winningNumbers = winningCells.map(cell => {
+                    const text = cell.textContent;
+                    return text === 'FREE' ? null : parseInt(text);
+                }).filter(num => num !== null);
+                
+                // Check if current number is in the winning pattern
+                if (currentNumber && winningNumbers.includes(currentNumber)) {
+                    winningNumber = currentNumber;
+                } else {
+                    // Find the most recently called number in the winning pattern
+                    for (let i = calledNumbers.length - 1; i >= 0; i--) {
+                        if (winningNumbers.includes(calledNumbers[i])) {
+                            winningNumber = calledNumbers[i];
+                            break;
+                        }
+                    }
+                }
+                
+                // Determine the column letter for the winning number
+                let winningLetter = '';
+                if (winningNumber) {
+                    for (const [letter, range] of Object.entries(BINGO_RANGES)) {
+                        if (winningNumber >= range.min && winningNumber <= range.max) {
+                            winningLetter = letter;
+                            break;
+                        }
+                    }
+                }
+                
+                const isCornerWin = winningPattern === "Four Corners";
+                const winningMessage = `BINGO! ${isCornerWin ? "Corners" : "Winning number: " + winningLetter + winningNumber} (${winningPattern})`;
+                bingoMessage.textContent = winningMessage;
+                
+                if (tg?.sendData) {
+                    tg.sendData(JSON.stringify({
+                        action: 'bingo_win',
+                        cardNumber: selectedCardIndex + 1,
+                        numbersCalled: calledNumbers.length,
+                        winningNumber: winningNumber ? `${winningLetter}${winningNumber}` : "Corners",
+                        winningPattern: winningPattern,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+                
+                return true;
+            }
+            
+            return false;
+        }
+        
+        function returnToCardSelection() {
+            clearInterval(countdownInterval);
+            clearInterval(callInterval);
+            gameView.classList.remove('active');
+            gameControls.style.display = 'none';
+            cardSelectionView.classList.add('active');
+            selectedCardIndex = -1;
+            document.querySelectorAll('.card-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+        }
+        
+        // Event listeners
+        startGameBtn.addEventListener('click', startGame);
+        
+        // Handle theme changes
+        if (tg?.onEvent) {
+            tg.onEvent('themeChanged', () => {
+                document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
+                document.body.style.color = tg.themeParams.text_color || '#000000';
+            });
+        }
+    </script>
+</body>
+</html>
